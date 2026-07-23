@@ -1,0 +1,17 @@
+Collections/
+Developers/
+LevelSequences/
+
+# Assets in the Content folder
+*Anim.uasset
+
+# Ignore temp
+Temp
+
+# Ignore Data folder
+Data
+
+
+# Assets
+Characters
+ThirdPerson

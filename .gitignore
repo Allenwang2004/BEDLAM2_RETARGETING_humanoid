@@ -1,0 +1,6 @@
+.idea
+body_models/**/*.npz
+data
+/output
+/animations
+/fbx
