@@ -19,7 +19,7 @@ These steps only depend on MuJoCo's own body/geom arrays, not on
   comments mention CMU-specific body names (`lhipjoint`, `lowerback`, ...)
   only as *examples* of what gets merged — the logic itself doesn't
   hardcode them.
-- **`create_cmu_ik_retargeter.py`** — takes source/target IK Rig paths as
+- **`create_ik_retargeter.py`** — takes source/target IK Rig paths as
   arguments; auto-maps chains by exact name and disables IK. No changes.
 - **`retarget_batch.py` / `retarget.py` / `export_anim_dir_fbx.py` /
   `render_videos.py`** — all take asset paths / directories as arguments.
@@ -116,7 +116,7 @@ you want to retarget onto it — no code changes.
 3. `import_batch.py` into a fresh `/Game/BodyModels/<Name>` pool dir.
 4. Write a `create_<name>_ik_rig.py` (copy `create_cmu_ik_rig.py`, swap in
    the new bone names per the chain checklist above).
-5. `create_cmu_ik_retargeter.py <source_rig> <new_rig> <output_path>` (no
+5. `create_ik_retargeter.py <source_rig> <new_rig> <output_path>` (no
    changes needed, just new arguments).
 6. Confirm upright alignment in the IK Retargeter preview.
 7. New `csv/<name>_retarget.csv`, then `retarget_batch.py` with the new

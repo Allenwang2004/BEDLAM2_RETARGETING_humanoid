@@ -1,13 +1,14 @@
 # Copyright (c) 2025 Max Planck Society
 # License: https://bedlam2.is.tuebingen.mpg.de/license.html
-"""Create an IK Retargeter with `smplx_IKRig` as SOURCE and `CMU_IKRig` (or any
-other target IK Rig) as TARGET, auto-mapping chains by exact name match.
+"""Create an IK Retargeter with `smplx_IKRig` as SOURCE and any other target
+IK Rig (e.g. `CMU_IKRig`, `Robot_IKRig`) as TARGET, auto-mapping chains by
+exact name match.
 
 Usage (run inside UnrealEditor-Cmd via -run=pythonscript):
-    create_cmu_ik_retargeter.py <source_ik_rig_path> <target_ik_rig_path> <output_retargeter_path>
-    e.g. create_cmu_ik_retargeter.py /Game/BodyModels/Smplx/smplx_IKRig \
-                                      /Game/BodyModels/CMU/CMU_IKRig \
-                                      /Game/BodyModels/CMU/CMU_IKRetargeter
+    create_ik_retargeter.py <source_ik_rig_path> <target_ik_rig_path> <output_retargeter_path>
+    e.g. create_ik_retargeter.py /Game/BodyModels/Smplx/smplx_IKRig \
+                                  /Game/BodyModels/CMU/CMU_IKRig \
+                                  /Game/BodyModels/CMU/CMU_IKRetargeter
 """
 import sys
 import unreal

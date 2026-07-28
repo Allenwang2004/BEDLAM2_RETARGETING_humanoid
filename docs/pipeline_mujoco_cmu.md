@@ -118,7 +118,7 @@ since goals are never initialized from a live preview pose here).
 ```bash
 "/Users/Shared/Epic Games/UE_5.4/Engine/Binaries/Mac/UnrealEditor-Cmd" \
   /Users/coconut/bedlam2_retargeting/retargeting/retargeting.uproject \
-  -run=pythonscript -script="/Users/coconut/bedlam2_retargeting/retargeting/Content/Python/create_cmu_ik_retargeter.py \
+  -run=pythonscript -script="/Users/coconut/bedlam2_retargeting/retargeting/Content/Python/create_ik_retargeter.py \
   /Game/BodyModels/Smplx/smplx_IKRig /Game/BodyModels/CMU/CMU_IKRig /Game/BodyModels/CMU/CMU_IKRetargeter"
 ```
 
