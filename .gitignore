@@ -4,3 +4,13 @@ data
 /output
 /animations
 /fbx
+
+# Generated UE assets and bulk motion data -- all reproducible by the
+# pipelines in docs/, and far too large for git (~1 GB combined).
+# robotmotion/ holds the source qpos npz clips; keep them out of band.
+/robotmotion
+retargeting/Content/BodyModels/RobotMotionSrc/animations/
+retargeting/Content/BodyModels/Robot_child/retargeting/
+
+# Stale copies UE left behind when the humanoid bodies were reorganized.
+retargeting/Content/BodyModels/_leftover_humanoid_backup/

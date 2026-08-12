@@ -44,7 +44,13 @@ class HumanFactory:
         tasks = unreal.Array(unreal.AssetImportTask)
 
         for p in filepaths:
-            human_name = os.path.basename(p).split(".")[0]
+            # Path(p).stem strips only the trailing extension (unlike the old
+            # os.path.basename(p).split(".")[0], which truncated at the FIRST
+            # dot -- silently colliding names like "crawl-0.4-0-d_0.fbx" and
+            # "crawl-0.4-0-u_0.fbx" both onto "crawl-0"). Dots are further
+            # replaced since Unreal's object-path syntax treats "." as a
+            # package/object separator.
+            human_name = Path(p).stem.replace(".", "_")
 
             if animation_bool:
                 relative_game_path = f"{self.pool_dir}/animations/{human_name}"
