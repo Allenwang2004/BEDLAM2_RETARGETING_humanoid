@@ -3,3 +3,5 @@ torch
 tqdm
 bpy
 # Instead of bpy, for windows use a wheel from https://download.blender.org/pypi/bpy/
+mujoco             # qpos <-> world-pose conversion (mujoco_qpos_pipeline/scripts)
+huggingface_hub    # processing/publish_dataset.py

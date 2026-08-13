@@ -11,13 +11,33 @@ Run the whole thing with:
 
 ```bash
 ./run_human_to_robot.sh [<amass_dataset_dir>] [<work_dir>]
-# defaults: raw_data/ACCAD, human_to_robot/
+# defaults: raw_data/ACCAD, human_to_robot/<DATASET>/
 ```
 
 Deliverable: `<work_dir>/qpos/<Subject>__<clip>.npz`, each holding a
 `(nframes, 76)` `qpos` array at 30 fps -- 7 free-joint values (pelvis world
 position + quaternion) followed by 23 bodies x 3 hinge DOFs, the same layout
 `robotmotion/`'s own clips use.
+
+## One dataset at a time
+
+The dataset name is simply the basename of the raw data folder you hand to
+`run_human_to_robot.sh` -- nothing hardcodes a list of dataset names. It
+namespaces every intermediate:
+
+| | path |
+|---|---|
+| work directory | `human_to_robot/<DATASET>/` |
+| UE import pool | `/Game/BodyModels/<Dataset>Src/` |
+| UE retarget output | `/Game/BodyModels/Robot/retargeting/<dataset>/` |
+| published archive | `<DATASET>.tar.gz` on the Hub |
+
+This separation is load-bearing, not cosmetic: step 5 exports a UE content
+directory wholesale, so if two datasets shared a retarget output directory,
+every run would re-export and re-convert all previously finished clips.
+`run_human_to_robot.sh` exports `AMASS_DATASET` and
+`retarget_amass_to_robot.py` derives the same names from it -- the capitalize/
+lower transforms in the two must stay in sync.
 
 ## Prerequisites
 
@@ -34,7 +54,7 @@ EXACT auto-mapping lines them up -- see `create_robot_ik_rig.py`.
 
 ```bash
 python3 processing/stage_amass_clips.py \
-    --input_dir raw_data/ACCAD --output_dir human_to_robot/staged
+    --input_dir raw_data/<DATASET> --output_dir human_to_robot/<DATASET>/staged
 ```
 
 AMASS ships one folder per capture subject with many motions inside
@@ -52,24 +72,26 @@ usable pose sequence.
 ### 2. SMPL-X npz -> FBX (Blender)
 
 ```bash
-python3 make_fbx_files.py --input_dir human_to_robot/staged \
-    --output_dir human_to_robot --anim_format AMASS --processes 6
+python3 make_fbx_files.py --input_dir human_to_robot/<DATASET>/staged \
+    --output_dir human_to_robot/<DATASET> --anim_format AMASS --processes 6
 ```
 
 `--anim_format AMASS` matters: it selects the importer's AMASS coordinate
 convention. `fbx_toolkit.py` reads each clip's `gender` field so the add-on
 builds the body from the matching gendered template, and snaps it to the ground
-plane. Writes `human_to_robot/animations/<clip>.fbx` (~2 MB each).
+plane. Writes `human_to_robot/<DATASET>/animations/<clip>.fbx` (~2 MB each).
 
 ### 3. Import into UE
 
 ```bash
-python3 retargeting/Content/Python/import_batch.py \
-    --input_dir human_to_robot/animations --output_dir /Game/BodyModels/AccadSrc \
+cd retargeting/Content/Python   # handle_paths.py resolves ../../../paths.json from the cwd
+python3 import_batch.py \
+    --input_dir <abs>/human_to_robot/<DATASET>/animations \
+    --output_dir /Game/BodyModels/<Dataset>Src \
     --animation --num_batches 4 --processes 4
 ```
 
-Creates `/Game/BodyModels/AccadSrc/animations/<clip>/{<clip>, <clip>_Anim}`.
+Creates `/Game/BodyModels/<Dataset>Src/animations/<clip>/{<clip>, <clip>_Anim}`.
 
 ### 4. Retarget SMPL-X -> robot
 
@@ -81,17 +103,17 @@ UnrealEditor-Cmd retargeting.uproject -stdout -FullStdOutLogOutput \
 Must be the interactive Editor, not `-run=pythonscript`:
 `IKRetargetBatchOperation.DuplicateAndRetarget` asserts under the commandlet.
 
-`retarget_amass_to_robot.py` scans `AccadSrc/animations` for whatever has been
+`retarget_amass_to_robot.py` scans `<Dataset>Src/animations` for whatever has been
 imported and skips clips already present in the output directory, so it is
 resumable. Source rig `smplx_IKRig`, target rig `Robot_IKRig`, retargeter
 `Robot_IKRetargeter`; output lands in
-`/Game/BodyModels/Robot/retargeting/accad/` as `bodies+<clip>_Anim`.
+`/Game/BodyModels/Robot/retargeting/<dataset>/` as `bodies+<clip>_Anim`.
 
 ### 5. Export back to FBX
 
 ```bash
 UnrealEditor-Cmd retargeting.uproject -run=pythonscript \
-    -script="export_anim_dir_fbx.py /Game/BodyModels/Robot/retargeting/accad human_to_robot/fbx"
+    -script="export_anim_dir_fbx.py /Game/BodyModels/Robot/retargeting/<dataset> human_to_robot/<DATASET>/fbx"
 ```
 
 `run_human_to_robot.sh` then strips the `bodies+` prefix and `_Anim` suffix from
@@ -104,14 +126,14 @@ so the AMASS clip name is what reaches the final npz.
 ```bash
 cd mujoco_qpos_pipeline
 blender --background --python scripts/extract_fbx_pose.py -- \
-    --folder ../human_to_robot --tpose-fbx assets/robot/robot.fbx
+    --folder ../human_to_robot/<DATASET> --tpose-fbx assets/robot/robot.fbx
 python3 scripts/fbx_pose_to_qpos.py --mjcf mjcf/robot.xml \
-    --skeleton-json assets/robot/robot.json --folder ../human_to_robot
+    --skeleton-json assets/robot/robot.json --folder ../human_to_robot/<DATASET>
 ```
 
 Identical to the robot pipeline's reverse half, just pointed at `robot.xml` /
 `robot.json` instead of the `robot_child` pair. Writes
-`human_to_robot/qpos/<clip>.npz`.
+`human_to_robot/<DATASET>/qpos/<clip>.npz`.
 
 ## Validation
 
@@ -133,6 +155,30 @@ Note the pelvis sits around 1.02-1.06 m while `robot.xml`'s own rest pelvis
 height is 0.9567 m: the retargeter preserves the source human's proportions
 rather than snapping to the robot's rest pose, so a taller-than-rest pelvis is
 expected, not a bug.
+
+## Publishing a finished dataset
+
+```bash
+python3 processing/publish_dataset.py \
+    --qpos_dir human_to_robot/<DATASET>/qpos --repo_id coconut19/amass-robot-qpos
+```
+
+Packages the clips (plus a generated `manifest.json` listing every clip and its
+frame count) into `<DATASET>/` inside `<DATASET>.tar.gz`, uploads that to the
+HuggingFace dataset repo, refreshes the repo's dataset card with a row for the
+new archive, and deletes the local archive. Repeat per dataset; each one adds
+its own archive to the same repo, building the collection up incrementally.
+
+The archive is deleted only after the uploaded file has been read back from the
+Hub and its size and (when the Hub reports one) its LFS sha256 confirmed to
+match what was sent -- a partial upload must not be allowed to destroy the only
+local copy. The `qpos/` clips themselves are never deleted, only the redundant
+archive, so republishing costs nothing. `--dry_run` builds and reports the
+archive without uploading; `--keep_archive <dir>` retains a local copy.
+
+The repo defaults to **private**, and should stay that way unless you have
+confirmed otherwise: these clips are derived from AMASS, whose license does not
+permit redistribution. `--public` exists but is deliberately not the default.
 
 ## Known caveat
 

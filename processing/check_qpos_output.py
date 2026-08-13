@@ -40,11 +40,16 @@ def check_clip(path, nq, rest_pelvis_z, fps):
         issues.append(f"hinge angle {np.abs(hinge).max():.2f} rad exceeds pi")
 
     z = q[:, 2]
-    # 0.4x-2.0x rest height spans crouching through jumping; outside that the
-    # solve has almost certainly collapsed into the floor or shot upward.
-    if z.min() < 0.4 * rest_pelvis_z or z.max() > 2.0 * rest_pelvis_z:
-        issues.append(f"pelvis z out of range [{z.min():.2f}, {z.max():.2f}] "
-                      f"vs rest {rest_pelvis_z:.2f}")
+    # No lower bound tied to rest height: AMASS is full of lying, crawling and
+    # crouching clips whose pelvis legitimately sits a few centimetres off the
+    # ground (ACCAD's "Lie forward" bottoms out at 0.05 m, correctly). What is
+    # never legitimate is going *below* the floor, which is what a collapsed
+    # solve produces -- so check penetration, not proportion.
+    if z.min() < 0.0:
+        issues.append(f"pelvis penetrates the floor (z min {z.min():.2f})")
+    if z.max() > 2.0 * rest_pelvis_z:
+        issues.append(f"pelvis z max {z.max():.2f} exceeds 2x rest "
+                      f"{rest_pelvis_z:.2f}")
 
     step = np.linalg.norm(np.diff(q[:, :3], axis=0), axis=1)
     speed = step.max() * fps if len(step) else 0.0

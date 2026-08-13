@@ -13,15 +13,36 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AMASS_DIR="${1:-${REPO}/raw_data/ACCAD}"
-WORK="${2:-${REPO}/human_to_robot}"
+
+# The dataset name (ACCAD, CMU, KIT, ...) namespaces everything downstream: the
+# work directory, the UE import pool, the UE retarget output directory, and the
+# archive published to HuggingFace. Keeping them separate is what makes feeding
+# a second dataset later safe -- step 5 exports a UE directory wholesale, so a
+# shared pool would re-export every already-finished dataset each time.
+DATASET="$(basename "${AMASS_DIR}")"
+WORK="${2:-${REPO}/human_to_robot/${DATASET}}"
+
+# The name becomes part of UE content paths, where spaces and punctuation are
+# not valid -- catch that here rather than halfway through a multi-hour run.
+if [[ ! "${DATASET}" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "ERROR: dataset folder name '${DATASET}' must match [A-Za-z0-9_-]+" >&2
+    echo "       (it is used verbatim in Unreal content paths). Rename it." >&2
+    exit 1
+fi
 
 PY="${REPO}/.venv/bin/python"
 BLENDER=$("${PY}" -c "import json;print(json.load(open('${REPO}/paths.json'))['BLENDER_APP_PATH'])")
 UE=$("${PY}" -c "import json;print(json.load(open('${REPO}/paths.json'))['UNREAL_APP_PATH'])")
 UPROJECT=$("${PY}" -c "import json;print(json.load(open('${REPO}/paths.json'))['UNREAL_PROJECT_PATH'])")
 
-SRC_POOL=/Game/BodyModels/AccadSrc
-RETARGET_DIR=/Game/BodyModels/Robot/retargeting/accad
+# Must match retarget_amass_to_robot.py's own derivation from AMASS_DATASET.
+export AMASS_DATASET="${DATASET}"
+POOL_NAME="$("${PY}" -c "print('${DATASET}'.capitalize())")"
+SRC_POOL="/Game/BodyModels/${POOL_NAME}Src"
+RETARGET_DIR="/Game/BodyModels/Robot/retargeting/$("${PY}" -c "print('${DATASET}'.lower())")"
+
+echo "==> dataset=${DATASET}  work=${WORK}"
+echo "    UE pool=${SRC_POOL}  retarget out=${RETARGET_DIR}"
 
 echo "==> [1/7] stage AMASS clips flat (symlinks)"
 "${PY}" "${REPO}/processing/stage_amass_clips.py" \
@@ -36,9 +57,14 @@ cd "${REPO}"
     --anim_format AMASS --processes 6
 
 echo "==> [3/7] import FBX into UE as animations"
-"${PY}" "${REPO}/retargeting/Content/Python/import_batch.py" \
+# Must run from the script's own directory: handle_paths.py looks for
+# "../../../paths.json" relative to the current working directory, not to
+# itself, so invoking it by absolute path from anywhere else fails.
+cd "${REPO}/retargeting/Content/Python"
+"${PY}" import_batch.py \
     --input_dir "${WORK}/animations" --output_dir "${SRC_POOL}" \
     --animation --num_batches 4 --processes 4
+cd "${REPO}"
 
 echo "==> [4/7] retarget SMPL-X -> robot (interactive Editor, not a commandlet)"
 # IKRetargetBatchOperation.DuplicateAndRetarget asserts under -run=pythonscript,

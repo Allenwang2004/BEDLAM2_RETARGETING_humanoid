@@ -26,19 +26,27 @@ The concrete, reproducible run this repo is currently built around — real huma
 documented further below.
 
 ```bash
-./run_human_to_robot.sh [<amass_dataset_dir>] [<work_dir>]   # defaults: raw_data/ACCAD, human_to_robot/
+./run_human_to_robot.sh [<amass_dataset_dir>] [<work_dir>]   # defaults: raw_data/ACCAD, human_to_robot/<DATASET>/  (<DATASET> = the raw folder's own name)
 ```
 
 Deliverable: `<work_dir>/qpos/<Subject>__<clip>.npz`, each a `(nframes, 76)` `qpos` array at 30 fps — 7 free-joint
 values (pelvis world position + quaternion) followed by 23 bodies × 3 hinge DOFs. Every stage is resumable, so
 rerunning after an interruption or after adding more clips only does the outstanding work.
 
-Validate the result with:
+Validate, then publish the finished dataset:
 
 ```bash
-python3 processing/check_qpos_output.py --qpos_dir human_to_robot/qpos \
+python3 processing/check_qpos_output.py --qpos_dir human_to_robot/ACCAD/qpos \
     --mjcf mujoco_qpos_pipeline/mjcf/robot.xml --verbose
+
+python3 processing/publish_dataset.py --qpos_dir human_to_robot/ACCAD/qpos \
+    --repo_id coconut19/amass-robot-qpos
 ```
+
+`publish_dataset.py` archives the clips as `<DATASET>.tar.gz`, uploads to a (private by default) HuggingFace dataset
+repo, verifies the upload against the Hub before deleting the local archive, and updates the repo's dataset card.
+Run it once per AMASS dataset — each adds its own archive to the same repo, so the full collection accumulates one
+dataset at a time.
 
 ### Source data
 

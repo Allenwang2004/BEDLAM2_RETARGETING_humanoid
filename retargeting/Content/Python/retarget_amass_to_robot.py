@@ -18,15 +18,24 @@
 #   UnrealEditor-Cmd retargeting.uproject -stdout -FullStdOutLogOutput \
 #     -ExecutePythonScript="retarget_amass_to_robot.py"
 # (IKRetargetBatchOperation.DuplicateAndRetarget asserts under the commandlet.)
+import os
+
 import unreal
 import retarget
 from importlib import reload
 reload(retarget)
 from retarget import execute, ignore_already_retargeted
 
-SRC_POOL = "/Game/BodyModels/AccadSrc/animations"
+# One import pool and one output directory per AMASS dataset, so feeding a
+# second dataset (CMU, KIT, ...) later doesn't mix its clips into ACCAD's --
+# step 5 exports a whole directory at a time, so a shared pool would re-export
+# every previously finished dataset on every run. run_human_to_robot.sh sets
+# AMASS_DATASET; the naming here must match what that script computes.
+DATASET = os.environ.get("AMASS_DATASET", "ACCAD")
+
+SRC_POOL = f"/Game/BodyModels/{DATASET.capitalize()}Src/animations"
 TARGET_BODY_DIR = "/Game/BodyModels/Robot/bodies"
-OUT_DIR = "/Game/BodyModels/Robot/retargeting/accad"
+OUT_DIR = f"/Game/BodyModels/Robot/retargeting/{DATASET.lower()}"
 
 SOURCE_IK_RIG = "/Game/BodyModels/Smplx/smplx_IKRig"
 TARGET_IK_RIG = "/Game/BodyModels/Robot/Robot_IKRig"
