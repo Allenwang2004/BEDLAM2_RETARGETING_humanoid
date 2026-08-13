@@ -14,3 +14,11 @@ retargeting/Content/BodyModels/Robot_child/retargeting/
 
 # Stale copies UE left behind when the humanoid bodies were reorganized.
 retargeting/Content/BodyModels/_leftover_humanoid_backup/
+
+# AMASS downloads and everything the human -> robot pipeline derives from them
+# (docs/pipeline_human_to_robot.md). raw_data/ACCAD alone is ~1 GB and is
+# redistributable only under AMASS's own license, so it must never be committed.
+/raw_data
+/human_to_robot
+retargeting/Content/BodyModels/AccadSrc/
+retargeting/Content/BodyModels/Robot/retargeting/accad/
